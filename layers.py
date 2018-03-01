@@ -154,7 +154,7 @@ class Convolution(Layer):
         self.out_channel = conv_params['out_channel']
 
         self.weights = initializer.initialize((self.out_channel, self.in_channel, self.kernel_h, self.kernel_w))
-        self.bias = np.zeros((self.out_channel))
+        self.bias = np.zeros(self.out_channel)
 
         self.w_grad = np.zeros(self.weights.shape)
         self.b_grad = np.zeros(self.bias.shape)
@@ -168,29 +168,55 @@ class Convolution(Layer):
         # Returns
             outputs: numpy array with shape (batch, out_channel, out_height, out_width)
         """
-        outputs = None
+
         #############################################################
         # code here
         #############################################################
+        # Initialize kernels number
+        k = self.out_channel
 
         # Extract necessary parameters
         batch_size = inputs.shape[0]
-        in_channel = inputs.shape[1]
+        in_channel = self.in_channel
         in_height = inputs.shape[2]
         in_width = inputs.shape[3]
         out_height = math.floor((in_height + self.pad * 2 - self.kernel_h)/self.stride) + 1
         out_width = math.floor((in_width + self.pad * 2 - self.kernel_w) / self.stride) + 1
 
-        kernel_matrix = np.random.rand(1, in_channel * self.kernel_w * self.kernel_h) * 0.01
-        input_trans_matrix = np.zeros((in_channel * self.kernel_w * self.kernel_h, out_height * out_width))
+        # Initialize outputs
+        outputs = np.zeros((batch_size, self.out_channel, out_height, out_width))
 
-        for h in range(out_height):
-            for w in range(out_width):
-                for c in range(in_channel):
-                    for k_h in range(self.kernel_h):
-                        for k_w in range(self.kernel_w):
-                            input_trans_matrix[c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w, h * out_width + w] = inputs[0, c, ]
+        # Initialize kernels as matrix format
+        kernel_matrix = np.random.rand(k, in_channel * self.kernel_w * self.kernel_h) * 0.01
 
+        # Loop on the batch input
+        for b in range(batch_size):
+            padded_inputs = np.zeros((in_height + 2 * self.pad, in_width + 2 * self.pad))
+            padded_inputs[self.pad:in_height + 1, self.pad:in_width + 1] = inputs[b]
+            input_trans_matrix = np.zeros((in_channel * self.kernel_w * self.kernel_h, out_height * out_width))
+
+            # Img2Col process
+            for h in range(out_height):
+                for w in range(out_width):
+                    for c in range(in_channel):
+                        for k_h in range(self.kernel_h):
+                            for k_w in range(self.kernel_w):
+                                input_trans_matrix[
+                                    c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w,
+                                    h * out_width + w] = padded_inputs[c, h + k_h, (w - 1) * self.stride + k_w]
+
+            # Dot product for convolution
+            output_trans_matrix = np.dot(kernel_matrix, input_trans_matrix) + np.zeros(k)
+
+            # Convert back matrix
+            output_matrix = np.zeros((k, out_height, out_width))
+            for c in range(k):
+                for h in out_height:
+                    for w in out_width:
+                        output_matrix[c, h, w] = output_trans_matrix[c, h * out_width + w]
+
+            # Assign calculated result to outputs
+            outputs[b] = output_matrix
 
         return outputs
 

@@ -172,6 +172,26 @@ class Convolution(Layer):
         #############################################################
         # code here
         #############################################################
+
+        # Extract necessary parameters
+        batch_size = inputs.shape[0]
+        in_channel = inputs.shape[1]
+        in_height = inputs.shape[2]
+        in_width = inputs.shape[3]
+        out_height = math.floor((in_height + self.pad * 2 - self.kernel_h)/self.stride) + 1
+        out_width = math.floor((in_width + self.pad * 2 - self.kernel_w) / self.stride) + 1
+
+        kernel_matrix = np.random.rand(1, in_channel * self.kernel_w * self.kernel_h) * 0.01
+        input_trans_matrix = np.zeros((in_channel * self.kernel_w * self.kernel_h, out_height * out_width))
+
+        for h in range(out_height):
+            for w in range(out_width):
+                for c in range(in_channel):
+                    for k_h in range(self.kernel_h):
+                        for k_w in range(self.kernel_w):
+                            input_trans_matrix[c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w, h * out_width + w] = inputs[0, c, ]
+
+
         return outputs
 
     def backward(self, in_grads, inputs):

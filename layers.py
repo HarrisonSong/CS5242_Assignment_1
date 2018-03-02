@@ -68,10 +68,19 @@ class FCLayer(Layer):
         # Returns
             outputs: numpy array with shape (batch, out_features)
         """
-        outputs = None
         #############################################################
         # code here
         #############################################################
+
+        # Extract necessary parameters
+        batch_size = inputs.shape[0]
+        out_features = self.weights.shape[1]
+
+        # Initialize outputs
+        outputs = np.zeros((batch_size, out_features))
+
+        for b in range(batch_size):
+            outputs[b] = np.dot(inputs[b], self.weights) + self.bias
         return outputs
 
     def backward(self, in_grads, inputs):
@@ -84,10 +93,30 @@ class FCLayer(Layer):
         # Returns
             out_grads: numpy array with shape (batch, in_features), gradients to inputs
         """
-        out_grads = None
         #############################################################
         # code here
         #############################################################
+
+        # Extract necessary parameters
+        batch_size = inputs.shape[0]
+        in_features = inputs.shape[1]
+        out_features = in_grads.shape[1]
+
+        # Initialize out_grads
+        out_grads = np.zeros((batch_size, in_features))
+
+        # Calculate b grads
+        for o_f in range(out_features):
+            self.b_grad[o_f] = np.sum(in_grads[:, o_f])
+
+        for b in range(batch_size):
+
+            # Calculate w_grads
+            self.w_grad += np.dot(inputs[b][:, np.newaxis], in_grads[b][np.newaxis, :])
+
+            # Calculate out_grads
+            out_grads[b] = np.dot(self.weights, in_grads[b][:, np.newaxis])[:, 0]
+
         return out_grads
 
     def update(self, params):
@@ -261,6 +290,10 @@ class Convolution(Layer):
                             out_c,
                             in_c * kernel_size + h * self.kernel_w + w] = self.weights[out_c, in_c, h, w]
 
+        # Calculate b grads
+        for c in range(self.out_channel):
+            self.b_grad[c] = np.sum(in_grads[:, c, :, :])
+
         for b in range(batch_size):
             padded_inputs = np.pad(inputs[b], self.pad, mode='constant')
             input_trans_matrix = np.zeros((self.in_channel * kernel_size, out_height * out_width))
@@ -290,10 +323,6 @@ class Convolution(Layer):
                                 accumulated_w_grad[
                                     out_c,
                                     in_c * kernel_size + h * self.kernel_w + w]
-
-            # Calculate b grads
-            for c in range(self.out_channel):
-                self.b_grad[c] = np.sum(in_grads[:, c, :, :])
 
             # Calculate out grads
             d_input_trans_matrix = np.dot(weight_trans_matrix.transpose(), dy)
@@ -435,7 +464,7 @@ class Pooling(Layer):
                             outputs[b, c, h, w] = np.average(padded_inputs[c,
                                                              h_step:h_step + self.pool_height,
                                                              w_step:w_step + self.pool_width])
-                        else:
+                        elif self.pool_type is 'max':
                             outputs[b, c, h, w] = np.max(padded_inputs[c,
                                                          h_step:h_step + self.pool_height,
                                                          w_step:w_step + self.pool_width])
@@ -451,11 +480,47 @@ class Pooling(Layer):
         # Returns
             out_grads: numpy array with shape (batch, in_channel, in_height, in_width), gradients to inputs
         """
-        out_grads = None
         #############################################################
         # code here
         #############################################################
+
+        # Extract necessary parameters
+        batch_size = inputs.shape[0]
+        in_channel = inputs.shape[1]
+        in_height = inputs.shape[2]
+        in_width = inputs.shape[3]
+        out_height = in_grads.shape[2]
+        out_width = in_grads.shape[3]
+
+        # Initialize out_grads
+        out_grads = np.zeros((batch_size, in_channel, in_height, in_width))
+
+        for b in range(batch_size):
+            padded_inputs = np.pad(inputs[b], self.pad, mode='constant')
+
+            for c in range(in_channel):
+                for h in range(out_height):
+                    for w in range(out_width):
+                        h_start = h * self.stride
+                        h_end = h_start + h + 1
+                        w_start = w * self.stride
+                        w_end = w_start + w + 1
+                        if self.pool_type is 'svg':
+                            out_grads[b, c, h_start:h_end, w_start:w_end] += \
+                                self.average_mask(self.pool_height, self.pool_width)
+                        elif self.pool_type is 'max':
+                            mask = self.max_mask(padded_inputs[c, h_start:h_end, w_start:w_end])
+                            out_grads[b, c, h_start:h_end, w_start:w_end] += \
+                                np.dot(mask, in_grads[b, c, h, w])
         return out_grads
+
+    def max_mask(self, matrix):
+        mask = np.zeros(matrix.shape)
+        mask[np.unravel_index(np.argmax(matrix), matrix.shape)] = 1
+        return mask
+
+    def average_mask(self, height, width):
+        return np.full((height * width), 1 / (height * width))
 
 class Dropout(Layer):
     def __init__(self, ratio, name='dropout', seed=None):

@@ -269,9 +269,18 @@ class Convolution(Layer):
                 for h in out_height:
                     for w in out_width:
                         dy[c, h * out_width + w] = in_grads[b, c, h, w]
-            self.w_grad = np.dot(dy, input_trans_matrix.transpose())
+            accumulated_w_grad = np.dot(dy, input_trans_matrix.transpose())
+            for out_c in range(self.out_channel):
+                for in_c in range(self.in_channel):
+                    for h in self.kernel_h:
+                        for w in self.kernel_w:
+                            self.w_grad[out_c, in_c, h, w] += \
+                                accumulated_w_grad[
+                                    out_c,
+                                    in_c * self.kernel_w * self.kernel_h + h * self.kernel_w + w]
 
             # Calculate b grads
+            self.b_grad = np.dot(dy, np.ones(out_height * out_width))
 
             # Img2Col for weight
             trans_weight_matrix = np.zeros((self.out_channel, self.in_channel * self.kernel_h * self.kernel_w))
@@ -284,6 +293,7 @@ class Convolution(Layer):
                                 in_c * self.kernel_h * self.kernel_w + h * self.kernel_w + w] = self.weights[
                                 out_c, in_c, h, w]
 
+            # Calculate out grads
             d_input_trans_matrix = np.dot(trans_weight_matrix.transpose(), dy)
             for c in range(self.in_channel):
                 for h in range(in_height):

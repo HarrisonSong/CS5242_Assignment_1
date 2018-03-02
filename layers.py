@@ -457,6 +457,12 @@ class Dropout(Layer):
         #############################################################
         # code here
         #############################################################
+        if self.training:
+            if self.mask is None:
+                np.random.seed(self.seed)
+                self.mask = np.random.binomial(1, self.ratio, size=inputs.shape)
+            inputs *= self.mask
+            outputs = inputs * (1 / (1 - self.ratio))
         return outputs
 
     def backward(self, in_grads, inputs):
@@ -473,6 +479,9 @@ class Dropout(Layer):
         #############################################################
         # code here
         #############################################################
+        if self.training:
+            out_grads = in_grads * self.mask * (1 / (1 - self.ratio))
+
         return out_grads
 
 class Flatten(Layer):

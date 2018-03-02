@@ -172,12 +172,9 @@ class Convolution(Layer):
         #############################################################
         # code here
         #############################################################
-        # Initialize kernels number
-        k = self.out_channel
 
         # Extract necessary parameters
         batch_size = inputs.shape[0]
-        in_channel = self.in_channel
         in_height = inputs.shape[2]
         in_width = inputs.shape[3]
         out_height = math.floor((in_height + self.pad * 2 - self.kernel_h)/self.stride) + 1
@@ -186,19 +183,26 @@ class Convolution(Layer):
         # Initialize outputs
         outputs = np.zeros((batch_size, self.out_channel, out_height, out_width))
 
-        # Initialize kernels as matrix format
-        kernel_matrix = np.random.rand(k, in_channel * self.kernel_w * self.kernel_h) * 0.01
+        # Img2Col for weight
+        trans_weight_matrix = np.zeros((self.out_channel, self.in_channel * self.kernel_h * self.kernel_w))
+        for out_c in range(self.out_channel):
+            for in_c in range(self.in_channel):
+                for h in range(self.kernel_h):
+                    for w in range(self.kernel_w):
+                        trans_weight_matrix[
+                            out_c,
+                            in_c * self.kernel_h * self.kernel_w + h * self.kernel_w + w] = self.weights[out_c, in_c, h, w]
 
         # Loop on the batch input
         for b in range(batch_size):
             padded_inputs = np.zeros((in_height + 2 * self.pad, in_width + 2 * self.pad))
             padded_inputs[self.pad:in_height + 1, self.pad:in_width + 1] = inputs[b]
-            input_trans_matrix = np.zeros((in_channel * self.kernel_w * self.kernel_h, out_height * out_width))
+            input_trans_matrix = np.zeros((self.in_channel * self.kernel_w * self.kernel_h, out_height * out_width))
 
-            # Img2Col process
+            # Img2Col for inputs
             for h in range(out_height):
                 for w in range(out_width):
-                    for c in range(in_channel):
+                    for c in range(self.in_channel):
                         for k_h in range(self.kernel_h):
                             for k_w in range(self.kernel_w):
                                 input_trans_matrix[
@@ -206,11 +210,11 @@ class Convolution(Layer):
                                     h * out_width + w] = padded_inputs[c, h + k_h, (w - 1) * self.stride + k_w]
 
             # Dot product for convolution
-            output_trans_matrix = np.dot(kernel_matrix, input_trans_matrix) + np.zeros(k)
+            output_trans_matrix = np.dot(trans_weight_matrix, input_trans_matrix) + self.bias
 
             # Convert back matrix
-            output_matrix = np.zeros((k, out_height, out_width))
-            for c in range(k):
+            output_matrix = np.zeros((self.out_channel, out_height, out_width))
+            for c in range(self.out_channel):
                 for h in out_height:
                     for w in out_width:
                         output_matrix[c, h, w] = output_trans_matrix[c, h * out_width + w]
@@ -230,10 +234,65 @@ class Convolution(Layer):
         # Returns
             out_grads: numpy array with shape (batch, in_channel, in_height, in_width), gradients to inputs
         """
-        out_grads = None
+
         #############################################################
         # code here
         #############################################################
+
+        # Extract necessary parameters
+        batch_size = inputs.shape[0]
+        in_height = inputs.shape[2]
+        in_width = inputs.shape[3]
+        out_height = in_grads[2]
+        out_width = in_grads[3]
+
+        # Initialize out_grads
+        out_grads = np.zeros((batch_size, self.in_channel, in_height, in_width))
+
+        for b in range(batch_size):
+            padded_inputs = np.zeros((in_height + 2 * self.pad, in_width + 2 * self.pad))
+            padded_inputs[self.pad:in_height + 1, self.pad:in_width + 1] = inputs[b]
+            input_trans_matrix = np.zeros((self.in_channel * self.kernel_w * self.kernel_h, out_height * out_width))
+
+            # Img2Col for inputs
+            for h in range(out_height):
+                for w in range(out_width):
+                    for c in range(self.in_channel):
+                        for k_h in range(self.kernel_h):
+                            for k_w in range(self.kernel_w):
+                                input_trans_matrix[
+                                    c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w,
+                                    h * out_width + w] = padded_inputs[c, h + k_h, (w - 1) * self.stride + k_w]
+
+            # Calculate w grads
+            dy = np.zeros((self.out_channel, out_height * out_width))
+            for c in range(self.out_channel):
+                for h in out_height:
+                    for w in out_width:
+                        dy[c, h * out_width + w] = in_grads[b, c, h, w]
+            self.w_grad = np.dot(dy, input_trans_matrix.transpose())
+
+            # Calculate b grads
+
+            # Img2Col for weight
+            trans_weight_matrix = np.zeros((self.out_channel, self.in_channel * self.kernel_h * self.kernel_w))
+            for out_c in range(self.out_channel):
+                for in_c in range(self.in_channel):
+                    for h in range(self.kernel_h):
+                        for w in range(self.kernel_w):
+                            trans_weight_matrix[
+                                out_c,
+                                in_c * self.kernel_h * self.kernel_w + h * self.kernel_w + w] = self.weights[
+                                out_c, in_c, h, w]
+
+            d_input_trans_matrix = np.dot(trans_weight_matrix.transpose(), dy)
+            for c in range(self.in_channel):
+                for h in range(in_height):
+                    for w in range(in_width):
+
+
+
+
         return out_grads
 
     def update(self, params):

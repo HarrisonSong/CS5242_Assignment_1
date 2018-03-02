@@ -207,16 +207,16 @@ class Convolution(Layer):
                             for k_w in range(self.kernel_w):
                                 input_trans_matrix[
                                     c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w,
-                                    h * out_width + w] = padded_inputs[c, h + k_h, (w - 1) * self.stride + k_w]
+                                    h * out_width + w] = padded_inputs[c, h * self.stride + k_h, w * self.stride + k_w]
 
             # Dot product for convolution
-            output_trans_matrix = np.dot(trans_weight_matrix, input_trans_matrix) + self.bias
+            output_trans_matrix = np.dot(trans_weight_matrix, input_trans_matrix) + self.bias[:, np.newaxis]
 
             # Convert back matrix
             output_matrix = np.zeros((self.out_channel, out_height, out_width))
             for c in range(self.out_channel):
-                for h in out_height:
-                    for w in out_width:
+                for h in range(out_height):
+                    for w in range(out_width):
                         output_matrix[c, h, w] = output_trans_matrix[c, h * out_width + w]
 
             # Assign calculated result to outputs
@@ -243,8 +243,8 @@ class Convolution(Layer):
         batch_size = inputs.shape[0]
         in_height = inputs.shape[2]
         in_width = inputs.shape[3]
-        out_height = in_grads[2]
-        out_width = in_grads[3]
+        out_height = in_grads.shape[2]
+        out_width = in_grads.shape[3]
 
         # Initialize out_grads
         out_grads = np.zeros((batch_size, self.in_channel, in_height, in_width))
@@ -261,26 +261,27 @@ class Convolution(Layer):
                             for k_w in range(self.kernel_w):
                                 input_trans_matrix[
                                     c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w,
-                                    h * out_width + w] = padded_inputs[c, h + k_h, (w - 1) * self.stride + k_w]
+                                    h * out_width + w] = padded_inputs[c, h * self.stride + k_h, w * self.stride + k_w]
 
             # Calculate w grads
             dy = np.zeros((self.out_channel, out_height * out_width))
             for c in range(self.out_channel):
-                for h in out_height:
-                    for w in out_width:
+                for h in range(out_height):
+                    for w in range(out_width):
                         dy[c, h * out_width + w] = in_grads[b, c, h, w]
             accumulated_w_grad = np.dot(dy, input_trans_matrix.transpose())
             for out_c in range(self.out_channel):
                 for in_c in range(self.in_channel):
-                    for h in self.kernel_h:
-                        for w in self.kernel_w:
+                    for h in range(self.kernel_h):
+                        for w in range(self.kernel_w):
                             self.w_grad[out_c, in_c, h, w] += \
                                 accumulated_w_grad[
                                     out_c,
                                     in_c * self.kernel_w * self.kernel_h + h * self.kernel_w + w]
 
             # Calculate b grads
-            self.b_grad = np.dot(dy, np.ones(out_height * out_width))
+            for c in range(self.out_channel):
+                self.b_grad[c] = np.sum(in_grads[:, c, :, :])
 
             # Img2Col for weight
             trans_weight_matrix = np.zeros((self.out_channel, self.in_channel * self.kernel_h * self.kernel_w))
@@ -295,18 +296,15 @@ class Convolution(Layer):
 
             # Calculate out grads
             d_input_trans_matrix = np.dot(trans_weight_matrix.transpose(), dy)
-            for c in range(self.in_channel):
-                for h in range(in_height):
-                    for w in range(in_width):
-                        lower_h = max(math.floor((h + self.pad - self.kernel_h)/self.stride) + 1, 0)
-                        lower_w = max(math.floor((w + self.pad - self.kernel_w) / self.stride) + 1, 0)
-                        upper_h = max(math.floor((h + self.pad) / self.stride), 0)
-                        upper_w = max(math.floor((w + self.pad) / self.stride), 0)
-                        for o_h in range(lower_h, upper_h):
-                            for o_w in range(lower_w, upper_w):
-                                out_grads[b, c, h, w] += d_input_trans_matrix[
-                                    c * self.kernel_h * self.kernel_w + o_h * self.kernel_w + o_w,
-                                    o_h * out_width + o_w]
+            for h in range(out_height):
+                for w in range(out_width):
+                    for c in range(self.in_channel):
+                        for k_h in range(self.kernel_h):
+                            for k_w in range(self.kernel_w):
+                                out_grads[b, c, h * self.stride + k_h, w * self.stride + k_w] += \
+                                    d_input_trans_matrix[
+                                        c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w,
+                                        h * out_width + w]
         return out_grads
 
     def update(self, params):

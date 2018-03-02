@@ -184,20 +184,21 @@ class Convolution(Layer):
         outputs = np.zeros((batch_size, self.out_channel, out_height, out_width))
 
         # Img2Col for weight
-        trans_weight_matrix = np.zeros((self.out_channel, self.in_channel * self.kernel_h * self.kernel_w))
+        kernel_size = self.kernel_h * self.kernel_w
+        weight_trans_matrix = np.zeros((self.out_channel, self.in_channel * kernel_size))
         for out_c in range(self.out_channel):
             for in_c in range(self.in_channel):
                 for h in range(self.kernel_h):
                     for w in range(self.kernel_w):
-                        trans_weight_matrix[
+                        weight_trans_matrix[
                             out_c,
-                            in_c * self.kernel_h * self.kernel_w + h * self.kernel_w + w] = \
+                            in_c * kernel_size + h * self.kernel_w + w] = \
                             self.weights[out_c, in_c, h, w]
 
         # Loop on the batch input
         for b in range(batch_size):
             padded_inputs = np.pad(inputs[b], self.pad, mode='constant')
-            input_trans_matrix = np.zeros((self.in_channel * self.kernel_w * self.kernel_h, out_height * out_width))
+            input_trans_matrix = np.zeros((self.in_channel * kernel_size, out_height * out_width))
 
             # Img2Col for inputs
             for h in range(out_height):
@@ -206,11 +207,11 @@ class Convolution(Layer):
                         for k_h in range(self.kernel_h):
                             for k_w in range(self.kernel_w):
                                 input_trans_matrix[
-                                    c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w,
+                                    c * kernel_size + k_h * self.kernel_w + k_w,
                                     h * out_width + w] = padded_inputs[c, h * self.stride + k_h, w * self.stride + k_w]
 
             # Dot product for convolution
-            output_trans_matrix = np.dot(trans_weight_matrix, input_trans_matrix) + self.bias[:, np.newaxis]
+            output_trans_matrix = np.dot(weight_trans_matrix, input_trans_matrix) + self.bias[:, np.newaxis]
 
             # Convert back matrix
             output_matrix = np.zeros((self.out_channel, out_height, out_width))
@@ -249,9 +250,20 @@ class Convolution(Layer):
         # Initialize out_grads
         out_grads = np.zeros((batch_size, self.in_channel, in_height, in_width))
 
+        # Img2Col for weight
+        kernel_size = self.kernel_h * self.kernel_w
+        weight_trans_matrix = np.zeros((self.out_channel, self.in_channel * kernel_size))
+        for out_c in range(self.out_channel):
+            for in_c in range(self.in_channel):
+                for h in range(self.kernel_h):
+                    for w in range(self.kernel_w):
+                        weight_trans_matrix[
+                            out_c,
+                            in_c * kernel_size + h * self.kernel_w + w] = self.weights[out_c, in_c, h, w]
+
         for b in range(batch_size):
             padded_inputs = np.pad(inputs[b], self.pad, mode='constant')
-            input_trans_matrix = np.zeros((self.in_channel * self.kernel_w * self.kernel_h, out_height * out_width))
+            input_trans_matrix = np.zeros((self.in_channel * kernel_size, out_height * out_width))
 
             # Img2Col for inputs
             for h in range(out_height):
@@ -260,7 +272,7 @@ class Convolution(Layer):
                         for k_h in range(self.kernel_h):
                             for k_w in range(self.kernel_w):
                                 input_trans_matrix[
-                                    c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w,
+                                    c * kernel_size + k_h * self.kernel_w + k_w,
                                     h * out_width + w] = padded_inputs[c, h * self.stride + k_h, w * self.stride + k_w]
 
             # Calculate w grads
@@ -277,25 +289,14 @@ class Convolution(Layer):
                             self.w_grad[out_c, in_c, h, w] += \
                                 accumulated_w_grad[
                                     out_c,
-                                    in_c * self.kernel_w * self.kernel_h + h * self.kernel_w + w]
+                                    in_c * kernel_size + h * self.kernel_w + w]
 
             # Calculate b grads
             for c in range(self.out_channel):
                 self.b_grad[c] = np.sum(in_grads[:, c, :, :])
 
-            # Img2Col for weight
-            trans_weight_matrix = np.zeros((self.out_channel, self.in_channel * self.kernel_h * self.kernel_w))
-            for out_c in range(self.out_channel):
-                for in_c in range(self.in_channel):
-                    for h in range(self.kernel_h):
-                        for w in range(self.kernel_w):
-                            trans_weight_matrix[
-                                out_c,
-                                in_c * self.kernel_h * self.kernel_w + h * self.kernel_w + w] = self.weights[
-                                out_c, in_c, h, w]
-
             # Calculate out grads
-            d_input_trans_matrix = np.dot(trans_weight_matrix.transpose(), dy)
+            d_input_trans_matrix = np.dot(weight_trans_matrix.transpose(), dy)
             for h in range(out_height):
                 for w in range(out_width):
                     for c in range(self.in_channel):
@@ -303,7 +304,7 @@ class Convolution(Layer):
                             for k_w in range(self.kernel_w):
                                 out_grads[b, c, h * self.stride + k_h, w * self.stride + k_w] += \
                                     d_input_trans_matrix[
-                                        c * self.kernel_h * self.kernel_w + k_h * self.kernel_w + k_w,
+                                        c * kernel_size + k_h * self.kernel_w + k_w,
                                         h * out_width + w]
         return out_grads
 
@@ -379,8 +380,6 @@ class ReLU(Layer):
         out_grads = inputs_grads
         return out_grads
 
-
-# TODO: add padding
 class Pooling(Layer):
     def __init__(self, pool_params, name='pooling'):
         """Initialization
@@ -409,10 +408,37 @@ class Pooling(Layer):
         # Returns
             outputs: numpy array with shape (batch, in_channel, out_height, out_width)
         """
-        outputs = None
         #############################################################
         # code here
         #############################################################
+
+        # Extract necessary parameters
+        batch_size = inputs.shape[0]
+        in_channel = inputs.shape[1]
+        in_height = inputs.shape[2]
+        in_width = inputs.shape[3]
+        out_height = math.floor((in_height + self.pad * 2 - self.pool_height)/self.stride) + 1
+        out_width = math.floor((in_width + self.pad * 2 - self.pool_width) / self.stride) + 1
+
+        # Initialize outputs
+        outputs = np.zeros((batch_size, in_channel, out_height, out_width))
+
+        for b in range(batch_size):
+            padded_inputs = np.pad(inputs[b], self.pad, mode='constant')
+
+            for c in range(in_channel):
+                for h in range(out_height):
+                    for w in range(out_width):
+                        h_step = h * self.stride
+                        w_step = w * self.stride
+                        if self.pool_type is 'avg':
+                            outputs[b, c, h, w] = np.average(padded_inputs[c,
+                                                             h_step:h_step + self.pool_height,
+                                                             w_step:w_step + self.pool_width])
+                        else:
+                            outputs[b, c, h, w] = np.max(padded_inputs[c,
+                                                         h_step:h_step + self.pool_height,
+                                                         w_step:w_step + self.pool_width])
         return outputs
         
     def backward(self, in_grads, inputs):
@@ -515,4 +541,3 @@ class Flatten(Layer):
         """
         out_grads = in_grads.copy().reshape(inputs.shape)
         return out_grads
-        

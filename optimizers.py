@@ -81,10 +81,10 @@ class SGD(Optimizer):
             #############################################################
 
             # update moments
-            self.moments[k] = self.momentum * prev_moments[k] + xs_grads[k]
+            self.moments[k] = self.momentum * prev_moments[k] - self.lr * xs_grads[k]
 
             # update new xs
-            new_xs[k] = xs[k] - self.lr * self.moments[k]
+            new_xs[k] = xs[k] + self.moments[k]
 
         return new_xs
 
@@ -150,7 +150,7 @@ class Adam(Optimizer):
             self.accumulators[k] = self.accumulators[k] / (1 - self.beta_2 ** (iteration + 1))
 
             # update new xs
-            new_xs[k] = xs[k] - self.lr * self.moments[k] / np.sqrt(self.accumulators[k] * self.epsilon)
+            new_xs[k] = xs[k] - self.lr * self.moments[k] / (np.sqrt(self.accumulators[k]) + self.epsilon)
 
         return new_xs
 

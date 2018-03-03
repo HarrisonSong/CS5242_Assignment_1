@@ -3,18 +3,20 @@ change log:
 - Version 1: change the out_grads of `backward` function of `ReLU` layer into inputs_grads instead of in_grads
 """
 
-import numpy as np 
+import numpy as np
 from utils.tools import *
+
 
 class Layer(object):
     """
     
     """
+
     def __init__(self, name):
         """Initialization"""
         self.name = name
         self.training = True  # The phrase, if for training then true
-        self.trainable = False # Whether there are parameters in this layer that can be trained
+        self.trainable = False  # Whether there are parameters in this layer that can be trained
 
     def forward(self, inputs):
         """Forward pass, reture outputs"""
@@ -110,7 +112,6 @@ class FCLayer(Layer):
             self.b_grad[o_f] = np.sum(in_grads[:, o_f])
 
         for b in range(batch_size):
-
             # Calculate w_grads
             self.w_grad += np.dot(inputs[b][:, np.newaxis], in_grads[b][np.newaxis, :])
 
@@ -128,12 +129,12 @@ class FCLayer(Layer):
         # Returns
             none
         """
-        for k,v in params.items():
+        for k, v in params.items():
             if 'weights' in k:
                 self.weights = v
             else:
                 self.bias = v
-        
+
     def get_params(self, prefix):
         """Return parameters (self.weights and self.bias) as well as gradients (self.w_grad and self.b_grad)
         
@@ -148,16 +149,17 @@ class FCLayer(Layer):
         """
         if self.trainable:
             params = {
-                prefix+':'+self.name+'/weights': self.weights,
-                prefix+':'+self.name+'/bias': self.bias
+                prefix + ':' + self.name + '/weights': self.weights,
+                prefix + ':' + self.name + '/bias': self.bias
             }
             grads = {
-                prefix+':'+self.name+'/weights': self.w_grad,
-                prefix+':'+self.name+'/bias': self.b_grad
+                prefix + ':' + self.name + '/weights': self.w_grad,
+                prefix + ':' + self.name + '/bias': self.b_grad
             }
             return params, grads
         else:
             return None
+
 
 class Convolution(Layer):
     def __init__(self, conv_params, initializer=Guassian(), name='conv'):
@@ -175,8 +177,8 @@ class Convolution(Layer):
         """
         super(Convolution, self).__init__(name=name)
         self.trainable = True
-        self.kernel_h = conv_params['kernel_h'] # height of kernel
-        self.kernel_w = conv_params['kernel_w'] # width of kernel
+        self.kernel_h = conv_params['kernel_h']  # height of kernel
+        self.kernel_w = conv_params['kernel_w']  # width of kernel
         self.pad = conv_params['pad']
         self.stride = conv_params['stride']
         self.in_channel = conv_params['in_channel']
@@ -346,7 +348,7 @@ class Convolution(Layer):
         # Returns
             none
         """
-        for k,v in params.items():
+        for k, v in params.items():
             if 'weights' in k:
                 self.weights = v
             else:
@@ -366,16 +368,17 @@ class Convolution(Layer):
         """
         if self.trainable:
             params = {
-                prefix+':'+self.name+'/weights': self.weights,
-                prefix+':'+self.name+'/bias': self.bias
+                prefix + ':' + self.name + '/weights': self.weights,
+                prefix + ':' + self.name + '/bias': self.bias
             }
             grads = {
-                prefix+':'+self.name+'/weights': self.w_grad,
-                prefix+':'+self.name+'/bias': self.b_grad
+                prefix + ':' + self.name + '/weights': self.w_grad,
+                prefix + ':' + self.name + '/bias': self.b_grad
             }
             return params, grads
         else:
             return None
+
 
 class ReLU(Layer):
     def __init__(self, name='relu'):
@@ -405,9 +408,10 @@ class ReLU(Layer):
         # Returns
             out_grads: numpy array, gradients to inputs 
         """
-        inputs_grads = (inputs >=0 ) * in_grads
+        inputs_grads = (inputs >= 0) * in_grads
         out_grads = inputs_grads
         return out_grads
+
 
 class Pooling(Layer):
     def __init__(self, pool_params, name='pooling'):
@@ -446,7 +450,7 @@ class Pooling(Layer):
         in_channel = inputs.shape[1]
         in_height = inputs.shape[2]
         in_width = inputs.shape[3]
-        out_height = math.floor((in_height + self.pad * 2 - self.pool_height)/self.stride) + 1
+        out_height = math.floor((in_height + self.pad * 2 - self.pool_height) / self.stride) + 1
         out_width = math.floor((in_width + self.pad * 2 - self.pool_width) / self.stride) + 1
 
         # Initialize outputs
@@ -469,7 +473,7 @@ class Pooling(Layer):
                                                          h_step:h_step + self.pool_height,
                                                          w_step:w_step + self.pool_width])
         return outputs
-        
+
     def backward(self, in_grads, inputs):
         """Backward pass
 
@@ -521,6 +525,7 @@ class Pooling(Layer):
     def average_mask(self, height, width):
         return np.full((height, width), 1 / (height * width))
 
+
 class Dropout(Layer):
     def __init__(self, ratio, name='dropout', seed=None):
         """Initialization
@@ -543,7 +548,7 @@ class Dropout(Layer):
         # Returns
             outputs: numpy array
         """
-        outputs = None
+        outputs = inputs
         #############################################################
         # code here
         #############################################################
@@ -565,14 +570,14 @@ class Dropout(Layer):
         # Returns
             out_grads: numpy array, gradients to inputs 
         """
-        out_grads = None
+        out_grads = in_grads
         #############################################################
         # code here
         #############################################################
         if self.training:
             out_grads = in_grads * self.mask * (1 / (1 - self.ratio))
-
         return out_grads
+
 
 class Flatten(Layer):
     def __init__(self, name='flatten', seed=None):

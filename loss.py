@@ -72,14 +72,14 @@ class SoftmaxCrossEntropy(Loss):
         batch_size = inputs.shape[0]
 
         out_grads = self.softmax(inputs)
-        out_grads[range(batch_size), targets] = -1
+        out_grads[range(batch_size), targets] -= 1
         out_grads = out_grads / batch_size
 
         return out_grads
 
     def softmax(self, inputs):
-        exps = np.exp(inputs)
-        return exps / np.sum(exps)
+        exps = np.exp(inputs - np.max(inputs, axis=1).reshape([-1, 1]))
+        return exps / np.sum(exps, axis=1).reshape([-1, 1])
 
 class L2(Loss):
     def __init__(self, w=0.01):

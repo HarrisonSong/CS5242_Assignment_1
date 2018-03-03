@@ -206,7 +206,7 @@ class Convolution(Layer):
         batch_size = inputs.shape[0]
         in_height = inputs.shape[2]
         in_width = inputs.shape[3]
-        out_height = math.floor((in_height + self.pad * 2 - self.kernel_h)/self.stride) + 1
+        out_height = math.floor((in_height + self.pad * 2 - self.kernel_h) / self.stride) + 1
         out_width = math.floor((in_width + self.pad * 2 - self.kernel_w) / self.stride) + 1
 
         # Initialize outputs

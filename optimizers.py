@@ -146,11 +146,11 @@ class Adam(Optimizer):
             self.accumulators[k] = (1 - self.beta_2) * self.accumulators[k] + self.beta_2 * xs_grads[k]**2
 
             # rescale v and s
-            self.moments[k] = self.moments[k] / (1 - self.beta_1**iteration)
-            self.accumulators[k] = self.accumulators[k] / (1 - self.beta_2 ** iteration)
+            self.moments[k] = self.moments[k] / (1 - self.beta_1 ** (iteration + 1))
+            self.accumulators[k] = self.accumulators[k] / (1 - self.beta_2 ** (iteration + 1))
 
             # update new xs
-            new_xs[k] = xs[k] - self.lr * self.moments[k] / np.math.sqrt(self.accumulators[k] * self.epsilon)
+            new_xs[k] = xs[k] - self.lr * self.moments[k] / np.sqrt(self.accumulators[k] * self.epsilon)
 
         return new_xs
 

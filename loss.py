@@ -40,11 +40,18 @@ class SoftmaxCrossEntropy(Loss):
             outputs: float, batch loss
             probs: numpy array with shape (batch, num_class), probability to each category with respect to each image
         """
-        outputs = None
-        probs = None
         #############################################################
         # code here
         #############################################################
+
+        # Extract necessary parameters
+        batch_size = inputs.shape[0]
+
+        # Calculate loss
+        probs = self.softmax(inputs)
+        log_likelihood = -np.log(probs[range(batch_size), targets])
+        outputs = np.sum(log_likelihood) / batch_size
+
         return outputs, probs
 
     def backward(self, inputs, targets):
@@ -57,11 +64,22 @@ class SoftmaxCrossEntropy(Loss):
         # Returns
             out_grads: numpy array with shape (batch, num_class), gradients to inputs 
         """
-        out_grads = None
         #############################################################
         # code here
         #############################################################
+
+        # Extract necessary parameters
+        batch_size = inputs.shape[0]
+
+        out_grads = self.softmax(inputs)
+        out_grads[range(batch_size), targets] = -1
+        out_grads = out_grads / batch_size
+
         return out_grads
+
+    def softmax(self, inputs):
+        exps = np.exp(inputs)
+        return exps / np.sum(exps)
 
 class L2(Loss):
     def __init__(self, w=0.01):

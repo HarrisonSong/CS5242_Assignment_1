@@ -502,16 +502,15 @@ class Pooling(Layer):
                 for h in range(out_height):
                     for w in range(out_width):
                         h_start = h * self.stride
-                        h_end = h_start + h + 1
+                        h_end = h_start + self.pool_height
                         w_start = w * self.stride
-                        w_end = w_start + w + 1
-                        if self.pool_type is 'svg':
+                        w_end = w_start + self.pool_width
+                        if self.pool_type is 'avg':
                             out_grads[b, c, h_start:h_end, w_start:w_end] += \
-                                self.average_mask(self.pool_height, self.pool_width)
+                                self.average_mask(self.pool_height, self.pool_width) * in_grads[b, c, h, w]
                         elif self.pool_type is 'max':
-                            mask = self.max_mask(padded_inputs[c, h_start:h_end, w_start:w_end])
                             out_grads[b, c, h_start:h_end, w_start:w_end] += \
-                                np.dot(mask, in_grads[b, c, h, w])
+                                self.max_mask(padded_inputs[c, h_start:h_end, w_start:w_end]) * in_grads[b, c, h, w]
         return out_grads
 
     def max_mask(self, matrix):
@@ -520,7 +519,7 @@ class Pooling(Layer):
         return mask
 
     def average_mask(self, height, width):
-        return np.full((height * width), 1 / (height * width))
+        return np.full((height, width), 1 / (height * width))
 
 class Dropout(Layer):
     def __init__(self, ratio, name='dropout', seed=None):

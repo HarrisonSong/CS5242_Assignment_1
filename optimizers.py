@@ -130,7 +130,7 @@ class Adam(Optimizer):
         if self.sheduler_func:
             self.lr = self.sheduler(self.sheduler_func, iteration)
         # initialization of moments and accumulators
-        if not self.accumulators or self.moments:
+        if not self.accumulators or not self.moments:
             self.moments = {}
             self.accumulators = {}
             for k, v in xs.items():

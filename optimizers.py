@@ -7,7 +7,7 @@ import numpy as np
 import copy
 
 class Optimizer():
-    
+
     def __init__(self, lr):
         """Initialization
         
@@ -33,9 +33,10 @@ class Optimizer():
         lr = func(self.lr, iteration)
         return lr
 
+
 class SGD(Optimizer):
-    
-    def __init__(self, lr=0.01, momentum=0, decay=0, sheduler_func = None):
+
+    def __init__(self, lr=0.01, momentum=0, decay=0, sheduler_func=None):
         """Initialization
         
         # Arguments
@@ -62,7 +63,7 @@ class SGD(Optimizer):
         """
         new_xs = {}
         if self.decay > 0:
-            self.lr *= (1/(1+self.decay*iteration))
+            self.lr *= (1 / (1 + self.decay * iteration))
         if self.sheduler_func:
             self.lr = self.sheduler(self.sheduler_func, iteration)
 
@@ -75,14 +76,21 @@ class SGD(Optimizer):
         prev_moments = copy.deepcopy(self.moments)
 
         for k in list(xs.keys()):
-        #############################################################
-        # remove pass and code in for loop
-        #############################################################
-            pass
+            #############################################################
+            # remove pass and code in for loop
+            #############################################################
+
+            # update moments
+            self.moments[k] = self.momentum * prev_moments[k] + xs_grads[k]
+
+            # update new xs
+            new_xs[k] = xs[k] - self.lr * self.moments[k]
+
         return new_xs
 
+
 class Adam(Optimizer):
-    
+
     def __init__(self, lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0, sheduler_func=None):
         """Initialization
         
@@ -118,23 +126,34 @@ class Adam(Optimizer):
         """
         new_xs = {}
         if self.decay > 0:
-            self.lr *= (1/(1+self.decay*iteration))
+            self.lr *= (1 / (1 + self.decay * iteration))
         if self.sheduler_func:
             self.lr = self.sheduler(self.sheduler_func, iteration)
         # initialization of moments and accumulators
         if not self.accumulators or self.moments:
             self.moments = {}
             self.accumulators = {}
-            for k,v in xs.items():
+            for k, v in xs.items():
                 self.moments[k] = np.zeros(v.shape)
                 self.accumulators[k] = np.zeros(v.shape)
 
         for k in list(xs.keys()):
-        #############################################################
-        # remove pass and code in for loop
-        #############################################################
-            pass
+            #############################################################
+            # remove pass and code in for loop
+            #############################################################
+
+            self.moments[k] = (1 - self.beta_1) * self.moments[k] + self.beta_1 * xs_grads[k]
+            self.accumulators[k] = (1 - self.beta_2) * self.accumulators[k] + self.beta_2 * xs_grads[k]**2
+
+            # rescale v and s
+            self.moments[k] = self.moments[k] / (1 - self.beta_1**iteration)
+            self.accumulators[k] = self.accumulators[k] / (1 - self.beta_2 ** iteration)
+
+            # update new xs
+            new_xs[k] = xs[k] - self.lr * self.moments[k] / np.math.sqrt(self.accumulators[k] * self.epsilon)
+
         return new_xs
+
 
 class Adagrad(Optimizer):
     def __init__(self, lr=0.01, epsilon=None, decay=0, sheduler_func=None):
@@ -166,17 +185,18 @@ class Adagrad(Optimizer):
         """
         new_xs = {}
         if self.decay > 0:
-            self.lr *= (1/(1+self.decay*iteration))
+            self.lr *= (1 / (1 + self.decay * iteration))
         if self.sheduler_func:
             self.lr = self.sheduler(self.sheduler_func, iteration)
         if not self.accumulators:
             self.accumulators = {}
-            for k,v in xs.items():
+            for k, v in xs.items():
                 self.accumulators[k] = np.zeros(v.shape)
         for k in list(xs.keys()):
-            self.accumulators[k] += xs_grads[k]**2
+            self.accumulators[k] += xs_grads[k] ** 2
             new_xs[k] = xs[k] - self.lr * xs_grads[k] / (np.sqrt(self.accumulators[k]) + self.epsilon)
         return new_xs
+
 
 class RMSprop(Optimizer):
     def __init__(self, lr=0.001, rho=0.9, epsilon=None, decay=0, sheduler_func=None):
@@ -210,14 +230,14 @@ class RMSprop(Optimizer):
         """
         new_xs = {}
         if self.decay > 0:
-            self.lr *= (1/(1+self.decay*iteration))
+            self.lr *= (1 / (1 + self.decay * iteration))
         if self.sheduler_func:
             self.lr = self.sheduler(self.sheduler_func, iteration)
         if not self.accumulators:
             self.accumulators = {}
-            for k,v in xs.ietms():
+            for k, v in xs.ietms():
                 self.accumulators[k] = np.zeros(v.shape)
         for k in list(xs.keys()):
-            self.accumulators[k] = self.rho * self.accumulators[k] + (1 - self.rho) * xs_grads[k]**2
+            self.accumulators[k] = self.rho * self.accumulators[k] + (1 - self.rho) * xs_grads[k] ** 2
             new_xs[k] = xs[k] - self.lr * xs_grads[k] / (np.sqrt(self.accumulators[k]) + self.epsilon)
         return new_xs

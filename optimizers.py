@@ -236,7 +236,7 @@ class RMSprop(Optimizer):
             self.lr = self.sheduler(self.sheduler_func, iteration)
         if not self.accumulators:
             self.accumulators = {}
-            for k, v in xs.ietms():
+            for k, v in xs.items():
                 self.accumulators[k] = np.zeros(v.shape)
         for k in list(xs.keys()):
             self.accumulators[k] = self.rho * self.accumulators[k] + (1 - self.rho) * xs_grads[k] ** 2

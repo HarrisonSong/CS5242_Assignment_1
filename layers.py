@@ -217,14 +217,10 @@ class Convolution(Layer):
         # Img2Col for weight
         kernel_size = self.kernel_h * self.kernel_w
         weight_trans_matrix = np.zeros((self.out_channel, self.in_channel * kernel_size))
-        for out_c in range(self.out_channel):
-            for in_c in range(self.in_channel):
-                for h in range(self.kernel_h):
-                    for w in range(self.kernel_w):
-                        weight_trans_matrix[
-                            out_c,
-                            in_c * kernel_size + h * self.kernel_w + w] = \
-                            self.weights[out_c, in_c, h, w]
+        for in_c in range(self.in_channel):
+            for h in range(self.kernel_h):
+                for w in range(self.kernel_w):
+                    weight_trans_matrix[:, in_c * kernel_size + h * self.kernel_w + w] = self.weights[:, in_c, h, w]
 
         # Loop on the batch input
         for b in range(batch_size):
@@ -246,10 +242,9 @@ class Convolution(Layer):
 
             # Convert back matrix
             output_matrix = np.zeros((self.out_channel, out_height, out_width))
-            for c in range(self.out_channel):
-                for h in range(out_height):
-                    for w in range(out_width):
-                        output_matrix[c, h, w] = output_trans_matrix[c, h * out_width + w]
+            for h in range(out_height):
+                for w in range(out_width):
+                    output_matrix[:, h, w] = output_trans_matrix[:, h * out_width + w]
 
             # Assign calculated result to outputs
             outputs[b] = output_matrix
@@ -284,13 +279,10 @@ class Convolution(Layer):
         # Img2Col for weight
         kernel_size = self.kernel_h * self.kernel_w
         weight_trans_matrix = np.zeros((self.out_channel, self.in_channel * kernel_size))
-        for out_c in range(self.out_channel):
-            for in_c in range(self.in_channel):
-                for h in range(self.kernel_h):
-                    for w in range(self.kernel_w):
-                        weight_trans_matrix[
-                            out_c,
-                            in_c * kernel_size + h * self.kernel_w + w] = self.weights[out_c, in_c, h, w]
+        for in_c in range(self.in_channel):
+            for h in range(self.kernel_h):
+                for w in range(self.kernel_w):
+                    weight_trans_matrix[:, in_c * kernel_size + h * self.kernel_w + w] = self.weights[:, in_c, h, w]
 
         # Calculate b grads
         for c in range(self.out_channel):
@@ -312,19 +304,14 @@ class Convolution(Layer):
 
             # Calculate w grads
             dy = np.zeros((self.out_channel, out_height * out_width))
-            for c in range(self.out_channel):
-                for h in range(out_height):
-                    for w in range(out_width):
-                        dy[c, h * out_width + w] = in_grads[b, c, h, w]
+            for h in range(out_height):
+                for w in range(out_width):
+                    dy[:, h * out_width + w] = in_grads[b, :, h, w]
             accumulated_w_grad = np.dot(dy, input_trans_matrix.transpose())
-            for out_c in range(self.out_channel):
-                for in_c in range(self.in_channel):
-                    for h in range(self.kernel_h):
-                        for w in range(self.kernel_w):
-                            self.w_grad[out_c, in_c, h, w] += \
-                                accumulated_w_grad[
-                                    out_c,
-                                    in_c * kernel_size + h * self.kernel_w + w]
+            for in_c in range(self.in_channel):
+                for h in range(self.kernel_h):
+                    for w in range(self.kernel_w):
+                        self.w_grad[:, in_c, h, w] += accumulated_w_grad[:, in_c * kernel_size + h * self.kernel_w + w]
 
             # Calculate out grads
             d_input_trans_matrix = np.dot(weight_trans_matrix.transpose(), dy)

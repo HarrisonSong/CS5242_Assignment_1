@@ -1,0 +1,25 @@
+Epoch 0:
+Test accuracy=0.10390, loss=2.30259
+Validation accuracy: 0.09950, loss: 2.30259
+Iteration 0:	accuracy=0.06667, loss=2.30259, regularization loss= 0.005284789969319897
+Validation accuracy: 0.10600, loss: 2.30213
+Iteration 100:	accuracy=0.06667, loss=2.30339, regularization loss= 0.0009458706471305675
+Validation accuracy: 0.36600, loss: 1.69217
+Iteration 200:	accuracy=0.20000, loss=2.11401, regularization loss= 0.025100912304355058
+Test accuracy=0.65650, loss=1.00433
+Validation accuracy: 0.66633, loss: 0.97577
+Iteration 300:	accuracy=0.40000, loss=1.46396, regularization loss= 0.0877225593134435
+Validation accuracy: 0.79558, loss: 0.68944
+Iteration 400:	accuracy=0.73333, loss=0.71382, regularization loss= 0.18813792967643403
+Validation accuracy: 0.83192, loss: 0.56530
+Iteration 500:	accuracy=0.73333, loss=0.77484, regularization loss= 0.29209180179411487
+Test accuracy=0.88330, loss=0.40166
+Validation accuracy: 0.88475, loss: 0.38305
+Iteration 600:	accuracy=0.86667, loss=0.47105, regularization loss= 0.39769189346444056
+Validation accuracy: 0.91667, loss: 0.29704
+Iteration 700:	accuracy=0.86667, loss=0.45714, regularization loss= 0.4994638538952068
+Validation accuracy: 0.93175, loss: 0.25830
+Iteration 800:	accuracy=0.66667, loss=1.15994, regularization loss= 0.5953966667877454
+Test accuracy=0.94010, loss=0.24918
+Validation accuracy: 0.93967, loss: 0.25824
+Iteration 900:	accuracy=0.80000, loss=0.62364, regularization loss= 0.6762284689141469

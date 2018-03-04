@@ -38,10 +38,9 @@ def func(lr, iteration):
         return lr
 
 
-sgd = SGD(lr=0.001)
-adam = Adam(lr=0.001, decay=0, sheduler_func=func)
+adam = Adam(lr=0.01, decay=0, sheduler_func=func)
 l2 = L2(w=0.001)  # L2 regularization with lambda=0.001
-model.compile(optimizer=sgd, loss=loss, regularization=l2)
+model.compile(optimizer=adam, loss=loss, regularization=l2)
 train_results, val_results, test_results = model.train(
     mnist,
     train_batch=30, val_batch=1000, test_batch=1000,

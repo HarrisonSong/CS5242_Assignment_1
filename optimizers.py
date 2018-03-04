@@ -81,10 +81,10 @@ class SGD(Optimizer):
             #############################################################
 
             # update moments
-            self.moments[k] = self.momentum * prev_moments[k] - self.lr * xs_grads[k]
+            self.moments[k] = self.momentum * self.moments[k] - self.lr * xs_grads[k]
 
             # update new xs
-            new_xs[k] = xs[k] + self.moments[k]
+            new_xs[k] = xs[k] + (1 + self.momentum) * self.moments[k] - self.momentum * prev_moments[k]
 
         return new_xs
 
@@ -142,10 +142,11 @@ class Adam(Optimizer):
             # remove pass and code in for loop
             #############################################################
 
+            # Update v and s
             self.moments[k] = (1 - self.beta_1) * self.moments[k] + self.beta_1 * xs_grads[k]
             self.accumulators[k] = (1 - self.beta_2) * self.accumulators[k] + self.beta_2 * xs_grads[k]**2
 
-            # rescale v and s
+            # bia correction for v and s
             self.moments[k] = self.moments[k] / (1 - self.beta_1 ** (iteration + 1))
             self.accumulators[k] = self.accumulators[k] / (1 - self.beta_2 ** (iteration + 1))
 
